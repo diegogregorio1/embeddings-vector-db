@@ -1,5 +1,7 @@
 # ===== 排除 PDF 文件 =====
 *.pdf
+# 例外：ChatPDF 案例的测试文档需要上传
+!Case-ChatPDF-Faiss/浦发上海浦东发展银行西安分行个金客户经理考核办法.pdf
 
 # ===== Python =====
 __pycache__/
@@ -19,6 +21,9 @@ __pycache__/
 *.pth
 *.faiss
 .index
+
+# ===== 运行时生成的向量库 =====
+vector_db/
 
 # ===== 数据文件（可选，按需保留）=====
 # *.csv

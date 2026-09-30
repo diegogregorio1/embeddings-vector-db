@@ -1,12 +1,14 @@
 from PyPDF2 import PdfReader
-from langchain.chains.question_answering import load_qa_chain
+from langchain_classic.chains.question_answering import load_qa_chain
 from langchain_community.callbacks.manager import get_openai_callback
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.vectorstores import FAISS
 from typing import List, Tuple
 import os
 import pickle
+import shutil
+import tempfile
 
 DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')
 if not DASHSCOPE_API_KEY:
@@ -113,7 +115,12 @@ def process_text_with_splitter(text: str, page_numbers: List[int], save_path: st
         os.makedirs(save_path, exist_ok=True)
         
         # 保存FAISS向量数据库
-        knowledgeBase.save_local(save_path)
+        # 注意：faiss 底层 C++ 无法写入包含中文的路径，
+        # 因此先保存到纯英文的临时目录，再用 Python 移动到目标位置
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            knowledgeBase.save_local(tmp_dir)
+            for file_name in os.listdir(tmp_dir):
+                shutil.move(os.path.join(tmp_dir, file_name), os.path.join(save_path, file_name))
         print(f"向量数据库已保存到: {save_path}")
         
         # 保存页码信息到同一目录
@@ -142,7 +149,12 @@ def load_knowledge_base(load_path: str, embeddings = None) -> FAISS:
         )
     
     # 加载FAISS向量数据库，添加allow_dangerous_deserialization=True参数以允许反序列化
-    knowledgeBase = FAISS.load_local(load_path, embeddings, allow_dangerous_deserialization=True)
+    # 注意：faiss 底层 C++ 无法读取包含中文的路径，
+    # 因此先把索引文件复制到纯英文的临时目录，再从临时目录加载
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        for file_name in os.listdir(load_path):
+            shutil.copy(os.path.join(load_path, file_name), os.path.join(tmp_dir, file_name))
+        knowledgeBase = FAISS.load_local(tmp_dir, embeddings, allow_dangerous_deserialization=True)
     print(f"向量数据库已从 {load_path} 加载。")
     
     # 加载页码信息
@@ -157,8 +169,11 @@ def load_knowledge_base(load_path: str, embeddings = None) -> FAISS:
     
     return knowledgeBase
 
+# 以脚本所在目录为基准，避免工作目录不同导致找不到文件
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # 读取PDF文件
-pdf_reader = PdfReader('./浦发上海浦东发展银行西安分行个金客户经理考核办法.pdf')
+pdf_reader = PdfReader(os.path.join(BASE_DIR, '浦发上海浦东发展银行西安分行个金客户经理考核办法.pdf'))
 # 提取文本和页码信息
 text, page_numbers = extract_text_with_page_numbers(pdf_reader)
 text
@@ -167,7 +182,7 @@ text
 print(f"提取的文本长度: {len(text)} 个字符。")
     
 # 处理文本并创建知识库，同时保存到磁盘
-save_dir = "./vector_db"
+save_dir = os.path.join(BASE_DIR, "vector_db")
 knowledgeBase = process_text_with_splitter(text, page_numbers, save_path=save_dir)
 
 # 示例：如何加载已保存的向量数据库
