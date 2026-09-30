@@ -1,0 +1,39 @@
+# ===== 排除 PDF 文件 =====
+*.pdf
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ===== Jupyter Notebook =====
+.ipynb_checkpoints/
+
+# ===== 模型与大文件 =====
+*.model
+*.bin
+*.safetensors
+*.h5
+*.pt
+*.pth
+*.faiss
+.index
+
+# ===== 数据文件（可选，按需保留）=====
+# *.csv
+# *.xlsx
+# *.db
+
+# ===== 系统与编辑器 =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ===== 环境与依赖 =====
+.env
+.venv/
+venv/
+env/
